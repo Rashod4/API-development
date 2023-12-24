@@ -1,0 +1,23 @@
+Users for LittleLemonAPI project
+
+superuser
+Username: admin
+Password: password
+token: a3722b779a0d2412083642c6dd5feb086e314ca4
+
+John Doe (manager):
+username: johndoe
+password: Hello@123
+email: johndoe@gmail.com
+token: 1d51de8a8c80b2985c39e2342ceaa35959e0605e
+
+Jimmy Doe:
+username: jimmydoe
+password: Hello@123
+email: jimmydoe@gmail.com
+token: d127172c33ca7e0c9aedd4958b33d2bff711a22f
+
+Max Doe (manager):
+username: maxdoe
+password: Hello@123
+email: maxdoe@gmail.com
