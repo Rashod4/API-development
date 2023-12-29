@@ -13,3 +13,9 @@ class IsDeliveryCrew(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return request.user.groups.filter(name='Delivery Crew').exists()
+
+class IsCustomer(permissions.BasePermission):
+    message = "User is not a Customer"
+
+    def has_permission(self, request, view):
+        return request.user.groups.filter(name='Customer').exists()

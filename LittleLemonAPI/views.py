@@ -7,8 +7,8 @@ from rest_framework.response import Response
 from .models import MenuItem, OrderItem, Category, Cart, Order
 from rest_framework import generics, status, permissions
 from django.contrib.auth.models import User, Group
-from .permissions import IsManager, IsDeliveryCrew
-from .serializers import UserSerializer, MenuItemSerializer
+from .permissions import IsManager, IsDeliveryCrew, IsCustomer
+from .serializers import UserSerializer, MenuItemSerializer, CartSerializer, OrderSerializer, OrderItemSerializer
 
 # Displays only the current user
 @api_view(['GET'])
@@ -130,7 +130,95 @@ def edit_single_menu_item(request, menu_item):
         return Response({"message": f"removed {removed_menu_item}"})
 
 # Cart management endpoints
-#def edit_cart(request):
+@api_view(['GET', 'POST', 'DELETE'])
+def edit_cart(request):
+    try:
+        user = request.user
+        if request.method == "GET":
+            # Returns current items in the cart for the current user token
+            cart = Cart.objects.filter(user=user)
+            serializer = CartSerializer(cart, many=True)
+            return Response(serializer.data)
+        elif request.method == "POST":
+            # Adds the menu item to the cart. Sets the authenticated user as the user id for these cart items
+            menu_item_title = request.data.get('menuitem')
+            menu_item_object = MenuItem.objects.get(title=menu_item_title)
+            quantity = int(request.data.get('quantity'))
+            unit_price = menu_item_object.price
+            price = unit_price * quantity
+            cart_item = Cart.objects.create(
+                user=user,
+                menuitem=menu_item_object,
+                quantity=quantity,
+                unit_price=unit_price,
+                price=price
+            )
+            serializer = CartSerializer(cart_item)
+            return Response({"Cart item created": serializer.data}, status=status.HTTP_201_CREATED)
+        elif request.method == "DELETE":
+            # Deletes all menu items created by the current user token
+            cart = Cart.objects.filter(user=user)
+            cart.delete()
+            return Response({"message": "Emptied Cart"})
+    except TypeError as e:
+        return Response({'message': f'Missing authentication token: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+# Order management endpoints
+@api_view(['GET', 'POST'])
+def manage_orders(request):
+    user = request.user
+    if request.method == "GET":
+        if user.groups.filter(name="Manager").exists():
+            # Returns all orders with order items by all users
+            order = Order.objects.all()
+            serializer = OrderSerializer(order, many=True)
+            return Response(serializer.data)
+        elif user.groups.filter(name="Delivery Crew").exists():
+            # Returns all orders with order items assigned to the delivery crew
+            order = Order.objects.filter(delivery_crew=user)
+            serializer = OrderSerializer(order, many=True)
+            return Response(serializer.data)
+        else:
+            # Returns all orders with order items created by this user
+            order = Order.objects.filter(user=user)
+            #order_item = OrderItem.objects.filter(order=order)
+            serializer = OrderSerializer(order, many=True)
+            return Response(serializer.data)
+    elif request.method == "POST":
+        # Creates a new order item for the current user.
+        # Gets current cart items from the cart endpoints and adds those items to the order items table.
+        # Then deletes all items from the cart for this user.
+        cart = Cart.objects.filter(user=user)
+        order = Order.objects.filter(user=user)
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+def manage_specific_order(request, orderId):
+    user = request.user
+    if request.method =="GET":
+        # Returns all items for this order id.
+        # If the order ID doesn’t belong to the current user, it displays an appropriate HTTP error status code.
+        try:
+            order = Order.objects.get(pk=orderId, user=user)
+        except Order.DoesNotExist:
+            return Response({'error': 'Order not found or does not belong to the current user'}, status=status.HTTP_404_NOT_FOUND)
+        order_items = OrderItem.objects.filter(order=order)
+        serializer = OrderItemSerializer(order_items, many=True)
+        return Response(serializer.data)
+    elif request.method in ['PUT', 'PATCH']:
+        # Updates the order. A manager can use this endpoint to set a delivery crew to this order, and also update the order status to 0 or 1.
+        # If a delivery crew is assigned to this order and the status = 0, it means the order is out for delivery.
+        # If a delivery crew is assigned to this order and the status = 1, it means the order has been delivered.
+        order = get_object_or_404(Order, pk=orderId)
+        delivery_crew = request.data.get('delivery_crew')
+        status = request.data.get('status')
+        order.delivery_crew = delivery_crew
+        order.status = status
+        return Response({"message": "Updated the order"})
+    elif request.method == "DELETE":
+        # Deletes this order
+        order = get_object_or_404(Order, pk=orderId)
+        order.delete()
+        return Response({"message": f"Order with orderId: {orderId} was deleted"})
 
 
 

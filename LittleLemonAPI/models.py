@@ -28,6 +28,8 @@ class Cart(models.Model):
     unit_price = models.DecimalField(max_digits=6, decimal_places=2)
     price = models.DecimalField(max_digits=6, decimal_places=2)
 
+    def __str__(self):
+        return self.user.username
     class Meta:
         #  a user can have only one cart entry for a particular menu item
         unique_together = ('menuitem', 'user')
@@ -39,6 +41,9 @@ class Order(models.Model):
     total = models.DecimalField(max_digits=6, decimal_places=2)
     date = models.DateField(db_index=True)
 
+    def __str__(self):
+        return self.user.username
+
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     menuitem = models.ForeignKey(MenuItem, on_delete=models.CASCADE)
@@ -46,5 +51,8 @@ class OrderItem(models.Model):
     unit_price = models.DecimalField(max_digits=6, decimal_places=2)
     price = models.DecimalField(max_digits=6, decimal_places=2)
 
+    def __str__(self):
+        return self.menuitem.title
     class Meta:
         unique_together = ('order', 'menuitem')
+
